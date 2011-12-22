@@ -1,3 +1,5 @@
+$:.unshift File.expand_path("../vendor/ronn/lib", __FILE__)
+
 begin
   require "rest_client"
   require "ronn/document"
