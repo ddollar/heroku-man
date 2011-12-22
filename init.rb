@@ -76,9 +76,13 @@ private
   def search(topic)
     results = json_decode(devcenter["/articles.json?q=#{topic}"].get.to_s)["devcenter"]
     results.reject! { |r| r["article"]["slug"].length > 20 }
-    longest = results.map { |r| r["article"]["slug"].length }.sort.last
-    results.sort_by { |r| r["article"]["slug"] }.each do |result|
-      display "%-#{longest}s  # %s" % [ result["article"]["slug"], result["article"]["title"] ]
+    if results.length == 0
+      display "No articles found."
+    else
+      longest = results.map { |r| r["article"]["slug"].length }.sort.last
+      results.sort_by { |r| r["article"]["slug"] }.each do |result|
+        display "%-#{longest}s  # %s" % [ result["article"]["slug"], result["article"]["title"] ]
+      end
     end
   end
 
