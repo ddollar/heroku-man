@@ -1,13 +1,5 @@
-$:.unshift File.expand_path("../vendor/ronn/lib", __FILE__)
-
-begin
-  require "heroku/command"
-  require "rest_client"
-  require "ronn/document"
-  require "tmpdir"
-rescue LoadError
-  puts " !  heroku-man requires the 'ronn' gem. Please install it to activate this plugin."
-end
+require "heroku/command"
+require "rest_client"
 
 # devcenter documentation
 class Heroku::Command::Man < Heroku::Command::Base
@@ -28,38 +20,22 @@ class Heroku::Command::Man < Heroku::Command::Base
 
     raise Heroku::Command::CommandFailed, "usage: heroku man TOPIC" unless topic = args.first
 
-    response = devcenter["/articles/#{topic}.md"].get
-    article = response.to_s
+    groff = "groff -Wall -mtty-char -mandoc -Tascii"
+    pager = ENV['MANPAGER'] || ENV['PAGER'] || 'more'
 
-    article.gsub!(/:::.+\n/, '')
+    article = devcenter["/articles/#{topic}.man"].get.to_s
 
-    Dir.mktmpdir do |dir|
-      FileUtils.mkdir_p dir
-      File.open("#{dir}/#{topic}.md", "w") { |f| f.puts article }
+    rd, wr = IO.pipe
 
-      groff = "groff -Wall -mtty-char -mandoc -Tascii"
-      pager = ENV['MANPAGER'] || ENV['PAGER'] || 'more'
-
-      ronn_options = options = {
-        "styles" => %w( man ),
-        "date" => Date.parse(response.headers[:last_modified])
-      }
-
-      doc = Ronn::Document.new("#{dir}/#{topic}.md", ronn_options)
-      man = doc.convert("roff")
-
-      rd, wr = IO.pipe
-
-      if pid = fork
-        rd.close
-        wr.puts man
-        wr.close
-        Process.wait
-      else
-        wr.close
-        STDIN.reopen rd
-        exec "#{groff} | #{pager}"
-      end
+    if pid = fork
+      rd.close
+      wr.puts article
+      wr.close
+      Process.wait
+    else
+      wr.close
+      STDIN.reopen rd
+      exec "#{groff} | #{pager}"
     end
   rescue RestClient::ResourceNotFound
     display "No article found named #{topic}. Perhaps try one of these?"
