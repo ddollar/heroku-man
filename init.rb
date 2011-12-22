@@ -1,8 +1,10 @@
-$:.unshift File.expand_path("../vendor/ronn/lib", __FILE__)
-
-require "rest_client"
-require "ronn/document"
-require "tmpdir"
+begin
+  require "rest_client"
+  require "ronn/document"
+  require "tmpdir"
+rescue LoadError
+  puts " !  heroku-man requires the 'ronn' gem. Please install it to activate this plugin."
+end
 
 # devcenter documentation
 class Heroku::Command::Man < Heroku::Command::Base
